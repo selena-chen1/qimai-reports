@@ -725,28 +725,7 @@ def render_html(data, week_id):
 
 <section>
   <h2>④ Apple 精品推荐位情况</h2>
-  <h3 style="font-size:13px; color:#6e7491; margin:8px 0; font-weight:600;">概览：版更后推荐是否明显增多？</h3>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:left; padding-left:16px;">游戏</th>
-          <th>窗口内版本数</th>
-          <th>窗口内新增推荐位（总）</th>
-          <th>版更前 7 天 推荐均值</th>
-          <th>版更后 14 天 推荐均值</th>
-          <th>后/前 倍数</th>
-          <th>判断</th>
-        </tr>
-      </thead>
-      <tbody>{feat_summary_rows}</tbody>
-    </table>
-  </div>
-  <div class="insight" style="margin-top:14px;">
-    <b>📍 怎么读：</b> 对每款游戏的<b>每个版更</b>，统计版更前 7 天的新增推荐数和版更后 14 天的新增推荐数，再取该游戏所有版本的均值。<b>后/前倍数 ≥ 2</b> = 明显增多；<b>1.3~2</b> = 略增；<b>0.8~1.3</b> = 持平。
-  </div>
-
-  <h3 style="font-size:13px; color:#6e7491; margin:24px 0 8px; font-weight:600;">明细：每款游戏的新增推荐位清单（点击展开）</h3>
+  <h3 style="font-size:13px; color:#6e7491; margin:8px 0 12px; font-weight:600;">明细：每款游戏的新增推荐位清单（点击展开）</h3>
   {featured_details}
 </section>
 
