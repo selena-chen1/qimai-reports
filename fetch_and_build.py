@@ -343,7 +343,13 @@ def render_html(data, week_id):
     for n in games:
         app = data["apps"].get(n)
         if not app: continue
-        cells = "".join(week_cell(r, app["weekly"][i-1] if i > 0 else None) for i, r in enumerate(app["weekly"]))
+        w = app["weekly"]
+        # 逆序：最新的周放最左边；每格的"较上周变动"对比的是右边那一格（更早的一周）
+        w_rev = list(reversed(w))
+        cells = "".join(
+            week_cell(r, w_rev[i+1] if i + 1 < len(w_rev) else None)
+            for i, r in enumerate(w_rev)
+        )
         rank_rows += f"""<tr>
           <th class="sticky-col"><div class="game-cell"><img src="{app['icon_inline']}" /><span>{n}</span></div></th>
           {cells}
@@ -710,7 +716,7 @@ def render_html(data, week_id):
       <thead>
         <tr>
           <th class="sticky-col" style="text-align:left; padding-left:16px;">游戏 ＼ 周</th>
-          {''.join(f'<th>{w}</th>' for w in week_labels)}
+          {''.join(f'<th>{w}</th>' for w in reversed(week_labels))}
         </tr>
       </thead>
       <tbody>{rank_rows}</tbody>
