@@ -1,0 +1,14 @@
+# 不上传到 GitHub Pages 的内容
+
+# 原始数据 JSON（避免七麦数据条款风险，只让公网看见 HTML 渲染结果）
+*.json
+
+# Python 依赖
+__pycache__/
+*.pyc
+
+# 本地脚本入口（不需要让别人看到）
+update_qimai.command
+
+# macOS
+.DS_Store
