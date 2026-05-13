@@ -511,10 +511,22 @@ def render_html(data, week_id):
         insights += f"""<div class="insight"><b>🚨 {n} 持续下滑</b> — 12 周从 #{s['first']} 跌到 #{s['last']}（绿色 ↓{-s['drop']} 名），窗口期 <b>{s['n_versions']} 个版本更新</b>。</div>"""
 
     if most_stable and in_paid_chart:
-        stable_names = " / ".join(n for n, _ in most_stable[:2])
-        paid_str = "、".join(f"{n}（游戏畅销 #{pg}）" for n, pg in in_paid_chart[:2])
-        ranges = ", ".join(f"{n}在 #{s['min']}~#{s['max']}" for n, s in most_stable[:2])
-        insights += f"""<div class="insight"><b>✅ {stable_names} 是稳定双子</b> — 窗口内排名最稳（{ranges}），同时也是 6 款里<b>唯二在游戏畅销榜上有排名</b>的：{paid_str}（其余 4 款未进榜）。"高频曝光 + 持续付费用户"形成正反馈。</div>"""
+        # 排除地铁跑酷（单独成一条洞察）
+        stable_pure = [(n, s) for n, s in most_stable if n != "地铁跑酷"][:2]
+        paid_pure = [(n, pg) for n, pg in in_paid_chart if n != "地铁跑酷"][:2]
+        if stable_pure and paid_pure:
+            stable_names = " / ".join(n for n, _ in stable_pure)
+            paid_str = "、".join(f"{n}（游戏畅销 #{pg}）" for n, pg in paid_pure)
+            ranges = ", ".join(f"{n}在 #{s['min']}~#{s['max']}" for n, s in stable_pure)
+            insights += f"""<div class="insight"><b>✅ {stable_names} 是稳定双子</b> — 窗口内排名最稳（{ranges}），同时也是 6 款里<b>唯二在游戏畅销榜上有排名</b>的：{paid_str}（其余 4 款未进榜）。"高频曝光 + 持续付费用户"形成正反馈。</div>"""
+
+    # 地铁跑酷单独一条洞察
+    dt = snapshot.get("地铁跑酷")
+    dt_app = data["apps"].get("地铁跑酷") if data["apps"].get("地铁跑酷") else None
+    if dt and dt_app:
+        dt_feat = (dt_app.get("featured_stats") or {}).get("count") or 0
+        n_dt_versions = dt["n_versions"]
+        insights += f"""<div class="insight"><b>🚇 地铁跑酷：联动节奏决定曝光</b> — 窗口期内排名在 #{dt['min']}~#{dt['max']} 区间波动（首尾 ↑{dt['drop']} 名），发布 <b>{n_dt_versions} 个版本</b>、获得 <b>{dt_feat} 个</b> Apple 推荐。这款产品的曝光强度与"跨界联动版本"高度绑定（植物大战僵尸2 联动、爱丁堡 / 首尔 / 杭州等地图主题）；没联动的纯活动版本推荐资源会明显下滑。</div>"""
 
     # ===== 单周冲榜洞察：尝试找出当周版本，附上玩法说明 =====
     if biggest_jump and biggest_jump["jump"] >= 5:
