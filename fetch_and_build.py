@@ -315,6 +315,7 @@ def render_html(data, week_id):
         else:          ch_html = '<span class="neutral">持平</span>'
         rt = app["realtime"]
         n_versions = len(app["versions"])
+        n_featured = (app.get("featured_stats") or {}).get("count") or 0
         summary_rows += f"""<tr>
           <td><div class="game-cell"><img src="{app['icon_inline']}" /><span>{n}</span></div></td>
           <td class="num"><b style="color:#2563eb;">#{rt['fg'] or '—'}</b></td>
@@ -327,6 +328,7 @@ def render_html(data, week_id):
           <td class="num">#{mx or '—'}</td>
           <td class="num">{ch_html}</td>
           <td class="num">{n_versions}</td>
+          <td class="num">{n_featured}</td>
         </tr>"""
 
     # ===== ② 周维度排名表 =====
@@ -510,9 +512,9 @@ def render_html(data, week_id):
 
     if most_stable and in_paid_chart:
         stable_names = " / ".join(n for n, _ in most_stable[:2])
-        paid_str = "、".join(f"{n}（畅销 #{pg}）" for n, pg in in_paid_chart[:2])
+        paid_str = "、".join(f"{n}（游戏畅销 #{pg}）" for n, pg in in_paid_chart[:2])
         ranges = ", ".join(f"{n}在 #{s['min']}~#{s['max']}" for n, s in most_stable[:2])
-        insights += f"""<div class="insight"><b>✅ {stable_names} 是稳定双子</b> — 窗口内排名最稳（{ranges}），同时也是当前唯二进入 iOS 游戏总榜<b>畅销榜 Top 200</b> 的：{paid_str}。"高频曝光 + 持续付费用户"形成正反馈。</div>"""
+        insights += f"""<div class="insight"><b>✅ {stable_names} 是稳定双子</b> — 窗口内排名最稳（{ranges}），同时也是 6 款里<b>唯二在游戏畅销榜上有排名</b>的：{paid_str}（其余 4 款未进榜）。"高频曝光 + 持续付费用户"形成正反馈。</div>"""
 
     # ===== 单周冲榜洞察：尝试找出当周版本，附上玩法说明 =====
     if biggest_jump and biggest_jump["jump"] >= 5:
@@ -699,6 +701,7 @@ def render_html(data, week_id):
           <th>最低谷</th>
           <th>首尾变动</th>
           <th>窗口内版本数</th>
+          <th>窗口内推荐次数</th>
         </tr>
       </thead>
       <tbody>{summary_rows}</tbody>
