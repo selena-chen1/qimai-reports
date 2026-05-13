@@ -243,6 +243,15 @@ def render_html(data, week_id):
         weekly = app["weekly"]
         valid = [v for v in weekly if v is not None]
         first, last = weekly[0], weekly[-1]
+        prev_week = weekly[-2] if len(weekly) >= 2 else None  # 上周
+        # 本周 vs 上周
+        if last is None or prev_week is None:
+            wow_html = '<span class="neutral">—</span>'
+        else:
+            wow = prev_week - last
+            if wow > 0:   wow_html = f'<span class="up">↑ {wow} 名</span>'
+            elif wow < 0: wow_html = f'<span class="down">↓ {-wow} 名</span>'
+            else:         wow_html = '<span class="neutral">持平</span>'
         mn = min(valid) if valid else None
         mx = max(valid) if valid else None
         ch = (first - last) if (first is not None and last is not None) else None
@@ -256,6 +265,8 @@ def render_html(data, week_id):
           <td><div class="game-cell"><img src="{app['icon_inline']}" /><span>{n}</span></div></td>
           <td class="num"><b style="color:#2563eb;">#{rt['fg'] or '—'}</b></td>
           <td class="num"><b>#{last or '—'}</b></td>
+          <td class="num">#{prev_week or '—'}</td>
+          <td class="num">{wow_html}</td>
           <td class="num">{('#'+str(rt['pg'])) if rt['pg'] and rt['pg'] != '-' else '—'}</td>
           <td class="num">#{first or '—'}</td>
           <td class="num">#{mn or '—'}</td>
@@ -534,6 +545,8 @@ def render_html(data, week_id):
           <th class="sticky-col" style="text-align:left; padding-left:16px;">游戏</th>
           <th>实时·游戏免费</th>
           <th>本周（游戏免费）</th>
+          <th>上周（游戏免费）</th>
+          <th>本周 vs 上周</th>
           <th>实时·游戏畅销</th>
           <th>12 周前</th>
           <th>最高峰</th>
