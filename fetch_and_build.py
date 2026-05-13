@@ -512,13 +512,12 @@ def render_html(data, week_id):
 
     if most_stable and in_paid_chart:
         # 排除地铁跑酷（单独成一条洞察）
-        stable_pure = [(n, s) for n, s in most_stable if n != "地铁跑酷"][:2]
         paid_pure = [(n, pg) for n, pg in in_paid_chart if n != "地铁跑酷"][:2]
-        if stable_pure and paid_pure:
-            stable_names = " / ".join(n for n, _ in stable_pure)
+        if paid_pure:
+            # 按排名升序（数字小=排名靠前）
+            paid_pure.sort(key=lambda x: x[1])
             paid_str = "、".join(f"{n}（游戏畅销 #{pg}）" for n, pg in paid_pure)
-            ranges = ", ".join(f"{n}在 #{s['min']}~#{s['max']}" for n, s in stable_pure)
-            insights += f"""<div class="insight"><b>✅ {stable_names} 是稳定双子</b> — 窗口内排名最稳（{ranges}），同时也是 6 款里<b>唯二在游戏畅销榜上有排名</b>的：{paid_str}（其余 4 款未进榜）。"高频曝光 + 持续付费用户"形成正反馈。</div>"""
+            insights += f"""<div class="insight">六款游戏里只有两款是在游戏畅销榜上有排名的：{paid_str}（其余 4 款未进榜）。"高频曝光 + 持续付费用户"形成正反馈。</div>"""
 
     # ===== 单周冲榜洞察：尝试找出当周版本，附上玩法说明 =====
     if biggest_jump and biggest_jump["jump"] >= 5:
