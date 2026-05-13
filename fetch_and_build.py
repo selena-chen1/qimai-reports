@@ -368,7 +368,7 @@ def render_html(data, week_id):
     insights = ""
     if biggest_dropper and biggest_dropper[1]["drop"] < 0:
         n, s = biggest_dropper
-        insights += f"""<div class="insight"><b>🚨 {n} 持续下滑</b> — 12 周从 #{s['first']} 跌到 #{s['last']}（绿色 ↓{-s['drop']} 名），窗口期 <b>{s['n_versions']} 个版本更新</b>。"停更/缺曝光 = 飘"。</div>"""
+        insights += f"""<div class="insight"><b>🚨 {n} 持续下滑</b> — 12 周从 #{s['first']} 跌到 #{s['last']}（绿色 ↓{-s['drop']} 名），窗口期 <b>{s['n_versions']} 个版本更新</b>。</div>"""
 
     if most_stable and in_paid_chart:
         stable_names = " / ".join(n for n, _ in most_stable[:2])
@@ -376,8 +376,53 @@ def render_html(data, week_id):
         ranges = ", ".join(f"{n}在 #{s['min']}~#{s['max']}" for n, s in most_stable[:2])
         insights += f"""<div class="insight"><b>✅ {stable_names} 是稳定双子</b> — 窗口内排名最稳（{ranges}），同时也是当前唯二进入 iOS 游戏总榜<b>畅销榜 Top 200</b> 的：{paid_str}。"高频曝光 + 持续付费用户"形成正反馈。</div>"""
 
+    # ===== 单周冲榜洞察：尝试找出当周版本，附上玩法说明 =====
     if biggest_jump and biggest_jump["jump"] >= 5:
-        insights += f"""<div class="insight"><b>📈 {biggest_jump['name']} 在 {biggest_jump['week']} 周单周冲榜</b> — #{biggest_jump['from']} → #{biggest_jump['to']}（↑{biggest_jump['jump']} 名）。是 12 周内单周最大涨幅。</div>"""
+        # 找该周内发布的版本（如果有）
+        jump_app = data["apps"].get(biggest_jump["name"], {})
+        jump_versions = jump_app.get("versions", [])
+        # 用 ISO 周来匹配
+        from datetime import datetime as _dt
+        related_v = None
+        for v in jump_versions:
+            vd = parse_cn_date(v.get("d"))
+            if not vd:
+                continue
+            # biggest_jump['week'] 形如 "3/30–4/5"；用月日比较即可
+            wk_str = biggest_jump["week"]
+            try:
+                start_md, end_md = wk_str.split("–")
+                sm, sd = map(int, start_md.split("/"))
+                em, ed = map(int, end_md.split("/"))
+                year = vd.year
+                w_start = date(year, sm, sd)
+                w_end = date(year, em, ed)
+                if w_start <= vd <= w_end:
+                    related_v = v
+                    break
+            except Exception:
+                pass
+
+        ver_html = ""
+        if related_v:
+            # 从 release_note 抠出更新摘要前几个亮点
+            note = (related_v.get("n") or "").replace("<br />", "\n").replace("<br/>", "\n")
+            ver_html = f"""<br/>📌 同期发布版本 <b>v{related_v['v']}</b>（{related_v['d']}）：<i>{related_v.get('s','')}</i><br/>"""
+            # 抽取关键玩法点
+            highlights = []
+            for line in note.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                # 取第一行非空（一般是该版本的核心介绍）+ 含「新增」「全新」「上线」「大更新」的行
+                if any(k in line for k in ["双人", "组队对抗", "全新", "新增", "大更新", "首款"]):
+                    highlights.append(line[:80])
+                if len(highlights) >= 2:
+                    break
+            if highlights:
+                ver_html += "<br/>".join(f"&nbsp;&nbsp;• {h}" for h in highlights)
+
+        insights += f"""<div class="insight"><b>📈 {biggest_jump['name']} 在 {biggest_jump['week']} 周单周冲榜</b> — #{biggest_jump['from']} → #{biggest_jump['to']}（↑{biggest_jump['jump']} 名）。是 12 周内单周最大涨幅。{ver_html}</div>"""
 
     # 大版本对推荐位影响：保留原结论文案
     insights += """<div class="insight"><b>📊 大版本不必然冲榜</b> — 多个大版本发布周排名基本持平或微跌；版更对头部存量游戏的价值在于：<b>给 Apple Editor 一个"重新推荐"的理由</b>，而不是直接拉排名。</div>"""
