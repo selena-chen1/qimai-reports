@@ -94,6 +94,7 @@ def fetch_all_data(tab):
         rec["free"] = cdp_fetch(tab, f"https://api.qimai.cn/app/rankMore?appid={g['id']}&country=cn&export_type=app_rank&brand=free&day=1&appRankShow=1&subclass=all&simple=1&sdate={sdate}&edate={edate}&rankEchartType=1")
         rec["rt"] = cdp_fetch(tab, f"https://api.qimai.cn/app/rank?appid={g['id']}&country=cn&export_type=app_rank&brand=free")
         rec["version"] = cdp_fetch(tab, f"https://api.qimai.cn/app/version?appid={g['id']}&country=cn")
+        rec["featured"] = cdp_fetch(tab, f"https://api.qimai.cn/app/featured?appid={g['id']}&country=cn")
         out[g["name"]] = rec
         time.sleep(0.3)
     return {"window": {"sdate": sdate, "edate": edate}, "raw": out}
@@ -177,6 +178,57 @@ def build_processed(raw_dataset):
             })
         versions.sort(key=lambda x: parse_cn_date(x["d"]) or date(2000, 1, 1), reverse=True)
 
+        # featured: 精品推荐位
+        featured_raw = r.get("featured", {}).get("featured", []) if r.get("featured", {}).get("code") == 10000 else []
+        featured_in_window = []
+        for f in featured_raw:
+            sdate_str = f.get("sdate") or ""
+            if not sdate_str:
+                continue
+            try:
+                fd = datetime.strptime(sdate_str.split(" ")[0], "%Y-%m-%d").date()
+            except Exception:
+                continue
+            if fd < sdate_d:
+                continue
+            featured_in_window.append({
+                "name": f.get("name") or "",
+                "genre": f.get("genre") or "",
+                "rank": f.get("rank") or "—",
+                "sdate": sdate_str,
+                "edate": f.get("edate") or "至今",
+                "duration": f.get("duration") or "",
+                "sort_sdate": f.get("sort_sdate", 0),
+            })
+        featured_in_window.sort(key=lambda x: x.get("sort_sdate", 0), reverse=True)
+
+        # 版更前后推荐位增减统计
+        def featured_count_in_range(d_from, d_to):
+            return sum(1 for f in featured_in_window
+                       if f["sort_sdate"]
+                       and d_from <= datetime.fromtimestamp(f["sort_sdate"]).date() <= d_to)
+
+        if versions:
+            b7_total = a14_total = 0
+            for v in versions:
+                vd = parse_cn_date(v["d"])
+                if not vd: continue
+                b7_total += featured_count_in_range(vd - timedelta(days=7), vd - timedelta(days=1))
+                a14_total += featured_count_in_range(vd, vd + timedelta(days=14))
+            n_v = len(versions)
+            avg_before = round(b7_total / n_v, 1)
+            avg_after = round(a14_total / n_v, 1)
+            ratio = round(avg_after / avg_before, 2) if avg_before > 0 else None
+        else:
+            avg_before = avg_after = ratio = None
+
+        featured_stats = {
+            "count": len(featured_in_window),
+            "avg_before_7d": avg_before,
+            "avg_after_14d": avg_after,
+            "ratio": ratio,
+        }
+
         # icon: try to find in response
         icon = ""
         for v in vlist_raw[:1]:
@@ -189,6 +241,8 @@ def build_processed(raw_dataset):
             "weekly": weekly,
             "realtime": realtime,
             "versions": versions,
+            "featured": featured_in_window,
+            "featured_stats": featured_stats,
         }
 
     return processed
@@ -343,7 +397,74 @@ def render_html(data, week_id):
           </div>
         </div>"""
 
-    # ===== ④ 关键洞察（动态生成核心结论）=====
+    # ===== ④ 精品推荐位：概览表 + 明细下拉 =====
+    feat_summary_rows = ""
+    for n in games:
+        app = data["apps"].get(n)
+        if not app: continue
+        fs = app.get("featured_stats") or {}
+        nv = len(app.get("versions", []))
+        cnt = fs.get("count") or 0
+        b7 = fs.get("avg_before_7d")
+        a14 = fs.get("avg_after_14d")
+        ratio = fs.get("ratio")
+
+        if ratio is None:
+            verdict = '<span class="neutral">N/A（无版本）</span>'
+        elif ratio >= 2:
+            verdict = '<span class="up">📈 明显增多</span>'
+        elif ratio >= 1.3:
+            verdict = '<span class="up" style="opacity:.75;">略有增多</span>'
+        elif ratio >= 0.8:
+            verdict = '<span class="neutral">基本持平</span>'
+        else:
+            verdict = '<span class="down">略减少</span>'
+
+        feat_summary_rows += f"""<tr>
+          <td><div class="game-cell"><img src="{app['icon_inline']}" /><span>{n}</span></div></td>
+          <td class="num">{nv}</td>
+          <td class="num">{cnt}</td>
+          <td class="num">{b7 if b7 is not None else '—'}</td>
+          <td class="num">{a14 if a14 is not None else '—'}</td>
+          <td class="num">{ratio if ratio is not None else '—'}</td>
+          <td>{verdict}</td>
+        </tr>"""
+
+    featured_details = ""
+    for n in games:
+        app = data["apps"].get(n)
+        if not app: continue
+        feats = app.get("featured", [])
+        if not feats:
+            rows_html = '<tr><td colspan="6" class="muted" style="text-align:center;">窗口期内无新增推荐位</td></tr>'
+        else:
+            rows_html = ""
+            for f in feats:
+                rows_html += f"""<tr>
+                  <td class="nowrap">{f['sdate']}</td>
+                  <td><b>{f['name']}</b></td>
+                  <td class="muted">{f['genre']}</td>
+                  <td class="num">#{f['rank']}</td>
+                  <td class="muted nowrap">{f['edate']}</td>
+                  <td class="muted nowrap">{f['duration']}</td>
+                </tr>"""
+        featured_details += f"""
+        <details class="detail-block">
+          <summary>
+            <img src="{app['icon_inline']}" />
+            <span class="dname">{n}</span>
+            <span class="dcount">{len(feats)} 条新增推荐</span>
+            <span class="darrow">▼</span>
+          </summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>加入日期</th><th>推荐位名称</th><th>所在分类</th><th>当时排名</th><th>下榜日期</th><th>已上时长</th></tr></thead>
+              <tbody>{rows_html}</tbody>
+            </table>
+          </div>
+        </details>"""
+
+    # ===== ⑤ 关键洞察（动态生成核心结论）=====
     # 找最大下滑 / 最稳定 / 进入畅销榜的
     snapshot = {}
     for n in games:
@@ -519,6 +640,25 @@ def render_html(data, week_id):
     margin-bottom: 10px;
   }}
   .insight b {{ color: #92400e; }}
+  /* Featured details (collapsible) */
+  .detail-block {{
+    background: #fff; border-radius: 12px; margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #ececf3;
+    overflow: hidden;
+  }}
+  .detail-block summary {{
+    cursor: pointer; padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    user-select: none; list-style: none;
+  }}
+  .detail-block summary::-webkit-details-marker {{ display: none; }}
+  .detail-block summary img {{ width: 26px; height: 26px; border-radius: 6px; }}
+  .detail-block summary .dname {{ font-weight: 700; font-size: 13px; flex: 1; }}
+  .detail-block summary .dcount {{ background: #f0fdf4; color: #16a34a; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }}
+  .detail-block summary .darrow {{ color: #9ca3af; font-size: 10px; transition: transform .2s; }}
+  .detail-block[open] summary .darrow {{ transform: rotate(180deg); }}
+  .detail-block summary:hover {{ background: #fafbfd; }}
+  .detail-block .table-wrap {{ border: none; border-radius: 0; box-shadow: none; border-top: 1px solid #ececf3; }}
   .nav-back {{
     display: inline-block; margin-bottom: 14px;
     color: #6e7491; text-decoration: none; font-size: 12px;
@@ -584,7 +724,34 @@ def render_html(data, week_id):
 </section>
 
 <section>
-  <h2>④ 关键洞察</h2>
+  <h2>④ Apple 精品推荐位情况</h2>
+  <h3 style="font-size:13px; color:#6e7491; margin:8px 0; font-weight:600;">概览：版更后推荐是否明显增多？</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left; padding-left:16px;">游戏</th>
+          <th>窗口内版本数</th>
+          <th>窗口内新增推荐位（总）</th>
+          <th>版更前 7 天 推荐均值</th>
+          <th>版更后 14 天 推荐均值</th>
+          <th>后/前 倍数</th>
+          <th>判断</th>
+        </tr>
+      </thead>
+      <tbody>{feat_summary_rows}</tbody>
+    </table>
+  </div>
+  <div class="insight" style="margin-top:14px;">
+    <b>📍 怎么读：</b> 对每款游戏的<b>每个版更</b>，统计版更前 7 天的新增推荐数和版更后 14 天的新增推荐数，再取该游戏所有版本的均值。<b>后/前倍数 ≥ 2</b> = 明显增多；<b>1.3~2</b> = 略增；<b>0.8~1.3</b> = 持平。
+  </div>
+
+  <h3 style="font-size:13px; color:#6e7491; margin:24px 0 8px; font-weight:600;">明细：每款游戏的新增推荐位清单（点击展开）</h3>
+  {featured_details}
+</section>
+
+<section>
+  <h2>⑤ 关键洞察</h2>
   {insights}
 </section>
 
