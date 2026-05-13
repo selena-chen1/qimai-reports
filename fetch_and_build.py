@@ -514,10 +514,9 @@ def render_html(data, week_id):
         # 排除地铁跑酷（单独成一条洞察）
         paid_pure = [(n, pg) for n, pg in in_paid_chart if n != "地铁跑酷"][:2]
         if paid_pure:
-            # 按排名升序（数字小=排名靠前）
             paid_pure.sort(key=lambda x: x[1])
-            paid_str = "、".join(f"{n}（游戏畅销 #{pg}）" for n, pg in paid_pure)
-            insights += f"""<div class="insight">六款游戏里只有两款是在游戏畅销榜上有排名的：{paid_str}（其余 4 款未进榜）。"高频曝光 + 持续付费用户"形成正反馈。</div>"""
+            paid_str = "、".join(f"<b>{n}（游戏畅销 #{pg}）</b>" for n, pg in paid_pure)
+            insights += f"""<div class="insight">💰 六款里只有两款进入游戏畅销榜：{paid_str}（其余 4 款未进榜），"高频曝光 + 持续付费"形成正反馈。</div>"""
 
     # ===== 单周冲榜洞察：尝试找出当周版本，附上玩法说明 =====
     if biggest_jump and biggest_jump["jump"] >= 5:
