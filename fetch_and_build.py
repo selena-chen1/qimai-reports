@@ -681,9 +681,9 @@ def render_html(data, week_id):
 <body>
 
 <header>
-  <a href="index.html" class="nav-back">← 返回历史周报列表</a>
-  <h1>📊 {week_id} · 6 款休闲游戏排名周报</h1>
-  <div class="sub">中国区 · App Store iPhone · 游戏分类免费榜 · 周维度（周一~周日均值）· 数据窗口 {data['window']['sdate']} ~ {data['window']['edate']} · 生成于 {datetime.now().strftime('%Y-%m-%d %H:%M')} · 数据来源 七麦数据</div>
+  <a href="archive.html" class="nav-back">📚 查看历史周报存档</a>
+  <h1>📊 {week_id} · App Store 6 款休闲游戏排名周报<span style="font-size:14px;font-weight:500;color:#6e7491;margin-left:10px;">（更新时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}）</span></h1>
+  <div class="sub">中国区 · App Store iPhone · 游戏分类免费榜 · 周维度（周一~周日均值）· 数据窗口 {data['window']['sdate']} ~ {data['window']['edate']} · 数据来源 七麦数据</div>
 </header>
 
 <section>
@@ -755,9 +755,9 @@ def render_html(data, week_id):
     return html
 
 # ============================================================
-# 列表页 index.html
+# 列表页 archive.html
 # ============================================================
-def render_index(reports_dir: Path):
+def render_archive(reports_dir: Path):
     files = sorted(reports_dir.glob("20*-w*.html"), reverse=True)
     rows = ""
     for f in files:
@@ -792,7 +792,9 @@ def render_index(reports_dir: Path):
   }}
   .wrap {{ max-width: 720px; margin: 0 auto; }}
   h1 {{ margin: 0 0 6px; font-size: 26px; }}
-  .sub {{ color: #6e7491; font-size: 13px; margin-bottom: 24px; }}
+  .sub {{ color: #6e7491; font-size: 13px; margin-bottom: 18px; }}
+  .nav-back {{ display: inline-block; margin-bottom: 16px; color: #2563eb; text-decoration: none; font-size: 13px; font-weight: 600; }}
+  .nav-back:hover {{ text-decoration: underline; }}
   .table-wrap {{
     background: #fff; border-radius: 12px; overflow: hidden;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #ececf3;
@@ -813,7 +815,8 @@ def render_index(reports_dir: Path):
 </head>
 <body>
 <div class="wrap">
-  <h1>📊 6 款休闲游戏 · 周报存档</h1>
+  <a href="index.html" class="nav-back">← 返回最新周报</a>
+  <h1>📚 周报存档</h1>
   <div class="sub">中国区 · App Store iPhone · 游戏分类免费榜 · 数据来源 七麦数据</div>
 
   <div class="table-wrap">
@@ -835,8 +838,8 @@ def render_index(reports_dir: Path):
 </body>
 </html>
 """
-    (reports_dir / "index.html").write_text(html, encoding="utf-8")
-    print(f"  ✓ 列表页已更新：{reports_dir / 'index.html'}")
+    (reports_dir / "archive.html").write_text(html, encoding="utf-8")
+    print(f"  ✓ 存档页已更新：{reports_dir / 'archive.html'}")
 
 # ============================================================
 # main
@@ -869,8 +872,12 @@ def main():
     html_path.write_text(html, encoding="utf-8")
     print(f"  ✓ 周报已保存：{html_path}")
 
-    print("\n📚 更新列表页...")
-    render_index(REPORTS_DIR)
+    # index.html 始终覆盖为本周最新（同事打开公网链接直接看到最新）
+    (REPORTS_DIR / "index.html").write_text(html, encoding="utf-8")
+    print(f"  ✓ index.html 已更新为本周最新")
+
+    print("\n📚 更新存档列表...")
+    render_archive(REPORTS_DIR)
 
     # ============================================================
     # 自动 git push（仅当当前目录是 git 仓库且远程已配置）
@@ -908,7 +915,7 @@ def main():
     print("\n" + "=" * 50)
     print("✅ 完成！")
     print(f"   本周报告：file://{html_path}")
-    print(f"   存档列表：file://{REPORTS_DIR / 'index.html'}")
+    print(f"   存档列表：file://{REPORTS_DIR / 'archive.html'}")
     print(f"\n💡 飞书分享：可直接把 {html_path.name} 拖入飞书云文档，或截图发群")
 
 if __name__ == "__main__":
