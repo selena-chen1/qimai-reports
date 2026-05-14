@@ -682,7 +682,7 @@ def render_html(data, week_id):
 
 <header>
   <a href="archive.html" class="nav-back">📚 查看历史周报存档</a>
-  <h1>📊 {week_id} · App Store 6 款休闲游戏排名周报<span style="font-size:14px;font-weight:500;color:#6e7491;margin-left:10px;">（更新时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}）</span></h1>
+  <h1>📊 {week_id} · App Store 6 款休闲游戏排名周报<span style="font-size:14px;font-weight:500;color:#6e7491;margin-left:10px;">（更新时间：{datetime.now().strftime('%Y-%m-%d')}）</span></h1>
   <div class="sub">中国区 · App Store iPhone · 游戏分类免费榜 · 周维度（周一~周日均值）· 数据窗口 {data['window']['sdate']} ~ {data['window']['edate']} · 数据来源 七麦数据</div>
 </header>
 
